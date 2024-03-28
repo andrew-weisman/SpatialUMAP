@@ -117,14 +117,14 @@ plt_cmap(ax=ax[0, 6], cmap=cmap_viridis, extend='max', width=0.01, ylabel='Densi
 plt_cmap(ax=ax[1, 6], cmap=cmap_viridis, extend='max', width=0.01, ylabel='Density')
 plt_cmap(ax=ax[2, 6], cmap=plt.get_cmap('bwr'), extend='both', width=0.01, ylabel='Outcome')
 
-d_idx_A = np.nanmean(H[:, :, -1, idx_A, 1], axis=-1).T
+d_idx_A = np.nanmean(H[:, :, -1, idx_A, 1], axis=-1).T  # something like the average smoothed counts over all dead patients with density data across all lineages
 plot_2d_density(d_idx_A, bins=[xx, yy], n_pad=30, ax=ax[0, 0], circle_type='bg', cmap=cmap_viridis)
 ax[0, 0].set(title='All Cells')
 ax[0, 0].set_ylabel('Survival <= 5 years', rotation='horizontal', ha='right')
 d_idx_B = np.nanmean(H[:, :, -1, idx_B, 1], axis=-1).T
 plot_2d_density(d_idx_B, bins=[xx, yy], n_pad=30, ax=ax[1, 0], circle_type='bg', cmap=cmap_viridis)
 ax[1, 0].set_ylabel('Survival > 5 years', rotation='horizontal', ha='right')
-d_diff = d_idx_A - d_idx_B
+d_diff = d_idx_A - d_idx_B  # this is probably okay even though the densities are not normalized since the contributions to the counts are from the same number of cells in each patient and we're averaging over the patients of each type (alive vs. dead)
 plot_2d_density(d_diff, bins=[xx, yy], n_pad=30, ax=ax[2, 0], circle_type='arch', cmap=cmap_bwr)
 ax[2, 0].set_ylabel('Density Differential', rotation='horizontal', ha='right')
 

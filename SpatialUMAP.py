@@ -13,8 +13,47 @@ from scipy import optimize
 
 
 class SpatialUMAP:
+    """
+    Class for performing spatial UMAP analysis on cell data.
+
+    Args:
+        dist_bin_um (numpy.ndarray): Array of distance bins in microns.
+        um_per_px (float): Microns per pixel.
+        area_downsample (int): Downsampling factor for area calculations.
+
+    Attributes:
+        um_per_px (float): Microns per pixel.
+        dist_bin_um (numpy.ndarray): Array of distance bins in microns.
+        dist_bin_px (numpy.ndarray): Array of distance bins in pixels.
+        area_downsample (int): Downsampling factor for area calculations.
+        arcs_radii (numpy.ndarray): Radii of the arcs in pixels.
+        arcs_masks (numpy.ndarray): Masks for the arcs.
+
+    Methods:
+        clear_counts(): Clear the counts array.
+        clear_areas(): Clear the areas array.
+        start_pool(processes): Start the multiprocessing pool.
+        close_pool(): Close the multiprocessing pool.
+        process_region_counts(region_id): Process the counts for a specific region.
+        process_region_areas(region_id, area_threshold, plots_directory): Process the areas for a specific region.
+        get_counts(pool_size, save_file): Get the counts for all regions.
+        get_areas(area_threshold, pool_size, save_file, plots_directory): Get the areas for all regions.
+        set_train_test(n, seed): Set the train and test flags for the cells.
+
+    """
+
     @staticmethod
     def construct_arcs(dist_bin_px):
+        """
+        Construct the arcs based on the distance bins.
+
+        Args:
+            dist_bin_px (numpy.ndarray): Array of distance bins in pixels.
+
+        Returns:
+            numpy.ndarray: Array of boolean masks representing the arcs.
+
+        """
         # set bool mask of the arcs
         arcs = np.zeros([int(2 * dist_bin_px[-1]) + 1] * 2 + [len(dist_bin_px), ], dtype=bool)
         for i in range(len(dist_bin_px)):
@@ -26,6 +65,21 @@ class SpatialUMAP:
 
     @staticmethod
     def process_cell_areas(i, cell_positions, cell_labels, dist_bin_px, img_mask, arcs):
+        """
+        Process the areas for a specific cell.
+
+        Args:
+            i (int): Index of the cell.
+            cell_positions (numpy.ndarray): Array of cell positions.
+            cell_labels (numpy.ndarray): Array of cell labels.
+            dist_bin_px (numpy.ndarray): Array of distance bins in pixels.
+            img_mask (numpy.ndarray): Binary mask of the tissue image.
+            arcs (numpy.ndarray): Array of boolean masks representing the arcs.
+
+        Returns:
+            Tuple[int, numpy.ndarray]: Index of the cell and the areas.
+
+        """
         # true bounds to match arcs
         bounds = np.array([cell_positions[i].astype(int) - dist_bin_px[-1].astype(int), dist_bin_px[-1].astype(int) + 1 + cell_positions[i].astype(int)]).T
         # actual coordinate slices given tissue image
@@ -39,6 +93,19 @@ class SpatialUMAP:
 
     @staticmethod
     def process_cell_counts(i, cell_positions, cell_labels, dist_bin_px):
+        """
+        Process the counts for a specific cell.
+
+        Args:
+            i (int): Index of the cell.
+            cell_positions (numpy.ndarray): Array of cell positions.
+            cell_labels (numpy.ndarray): Array of cell labels.
+            dist_bin_px (numpy.ndarray): Array of distance bins in pixels.
+
+        Returns:
+            Tuple[int, numpy.ndarray]: Index of the cell and the counts.
+
+        """
         # squared distance
         counts = np.sum(np.square(cell_positions[i][np.newaxis, :] - cell_positions), axis=1)
         # inequalities around arcs
@@ -49,6 +116,15 @@ class SpatialUMAP:
         return i, counts
 
     def __init__(self, dist_bin_um, um_per_px, area_downsample):
+        """
+        Initialize the SpatialUMAP object.
+
+        Args:
+            dist_bin_um (numpy.ndarray): Array of distance bins in microns.
+            um_per_px (float): Microns per pixel.
+            area_downsample (int): Downsampling factor for area calculations.
+
+        """
         # microns per pixel
         self.um_per_px = um_per_px
         # distance arcs
@@ -61,19 +137,45 @@ class SpatialUMAP:
         self.arcs_masks = SpatialUMAP.construct_arcs(self.arcs_radii)
 
     def clear_counts(self):
+        """
+        Clear the counts array.
+
+        """
         self.counts = np.empty((self.cell_positions.shape[0], len(self.dist_bin_um), 5))
 
     def clear_areas(self):
+        """
+        Clear the areas array.
+
+        """
         self.areas = np.empty((self.cell_positions.shape[0], len(self.dist_bin_um)))
 
     def start_pool(self, processes):
+        """
+        Start the multiprocessing pool.
+
+        Args:
+            processes (int): Number of processes to use.
+
+        """
         self.pool = Pool(processes=processes)
 
     def close_pool(self):
+        """
+        Close the multiprocessing pool.
+
+        """
         self.pool.close()
         del self.pool
 
     def process_region_counts(self, region_id):
+        """
+        Process the counts for a specific region.
+
+        Args:
+            region_id: ID of the region.
+
+        """
         # get indices of cells from this region
         idx = np.where(region_id == self.cells['TMA_core_id'])[0]
         # get counts if there are cells in region
@@ -87,6 +189,15 @@ class SpatialUMAP:
             self.counts[idx] = counts[i]
 
     def process_region_areas(self, region_id, area_threshold, plots_directory=None):
+        """
+        Process the areas for a specific region.
+
+        Args:
+            region_id: ID of the region.
+            area_threshold: Threshold for area coverage.
+            plots_directory: Directory to save plots (optional).
+
+        """
         # get indices of cells from this region
         idx = np.where(region_id == self.cells['TMA_core_id'])[0]
         # get counts if cells are in region
@@ -130,6 +241,14 @@ class SpatialUMAP:
                 plt.ion()
 
     def get_counts(self, pool_size=2, save_file=None):
+        """
+        Get the counts for all regions.
+
+        Args:
+            pool_size (int): Number of processes to use for multiprocessing.
+            save_file (str): File path to save the counts (optional).
+
+        """
         self.clear_counts()
         self.start_pool(pool_size)
         for region_id in tqdm(self.region_ids):
@@ -141,6 +260,16 @@ class SpatialUMAP:
             pd.DataFrame(self.counts.reshape((self.counts.shape[0], -1)), columns=column_names).to_csv(save_file, index=False)
 
     def get_areas(self, area_threshold, pool_size=2, save_file=None, plots_directory=None):
+        """
+        Get the areas for all regions.
+
+        Args:
+            area_threshold: Threshold for area coverage.
+            pool_size (int): Number of processes to use for multiprocessing.
+            save_file (str): File path to save the areas (optional).
+            plots_directory (str): Directory to save plots (optional).
+
+        """
         self.clear_areas()
         self.cells['area_filter'] = False
         self.start_pool(pool_size)
@@ -152,6 +281,14 @@ class SpatialUMAP:
             pd.DataFrame(self.areas, columns=self.dist_bin_um).to_csv(save_file, index=False)
 
     def set_train_test(self, n, seed=None):
+        """
+        Set the train and test flags for the cells.
+
+        Args:
+            n (int): Number of cells per class.
+            seed (int): Seed for random number generation (optional).
+
+        """
         region_ids = self.cells['TMA_core_id'].unique()
         self.cells[['umap_train', 'umap_test']] = False
         for region_id, group in self.cells.groupby('Sample_number'):

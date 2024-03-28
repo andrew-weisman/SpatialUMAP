@@ -43,6 +43,7 @@ spatial_umap.set_train_test(n=2500, seed=54321)
 # fit umap on training cells
 spatial_umap.umap_fit = umap.UMAP().fit(spatial_umap.density[spatial_umap.cells['umap_train'].values].reshape((spatial_umap.cells['umap_train'].sum(), -1)))
 # apply umap embedding on test cells
+# alw: this is an equal number of cells from each sample, and probably all samples are forced to be included
 spatial_umap.umap_test = spatial_umap.umap_fit.transform(spatial_umap.density[spatial_umap.cells['umap_test'].values].reshape((spatial_umap.cells['umap_test'].sum(), -1)))
 
 # save spatial_umap object as pickle
